@@ -1,7 +1,14 @@
-
+/**
+ * DLVBatchWordle
+ * A Java program that solves wordles in batch using an ASP solver (DLV2) embedded using
+ * the <a href="https://www.mat.unical.it/calimeri/projects/embasp/">EmbASP Project</a>.
+ * 
+ * @author Kaylynn Borror and Alan Ferrenberg
+ */
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Scanner;
 
 import it.unical.mat.embasp.base.Handler;
@@ -21,6 +28,8 @@ public class MainClass {
     private static String idbFileName = "programs/icecream-in-out.dlv";
     private static String edbFileName = "programs/icecream-edb.dlv";
 
+    private static final int MAX_TRIES = 8;
+    
     public static void main(String[] args) {
 
         try {
@@ -37,11 +46,24 @@ public class MainClass {
             addDLVProgram("programs/solutions-edb.dlv");
             addDLVProgram("programs/used.dlv");
             
-            String guess = generateWord();
-
-            System.out.println(guess);
+            String answer = "cream";
             
-            //int clueFileId = generateClues(guess, answer);
+            for (int i = 0; i < MAX_TRIES; i++) {
+                String guess = generateWord();
+
+                System.out.println(guess);
+                
+                if (guess.equals("INCOHERENT")) {
+                    System.out.println("Incoherent answerset encountered -- check your DLV program(s).");
+                    break;
+                }
+                if (guess.equals(answer)) {
+                    System.out.println("Tries: " + (i+1));
+                    break;
+                }
+                
+                int clueFileId = generateClues(guess, answer, i);
+            }
             
         } catch (Exception e) {
             e.printStackTrace();
@@ -91,11 +113,10 @@ public class MainClass {
      * This method runs the DLV solver using the loaded-in files and collects
      * the best word guess from the valid answerset(s). This method only grabs
      * the first best word if there is more than one valid answerset, and it
-     * expects the format of the answerset atoms to be: score(String, int)
+     * expects the format of the answerset atoms to be: score(String, int). If
+     * the solver evaluates to INCOHERENT, it will return back the String "INCOHERENT"
      * 
-     * This method does not function properly when the answerset is INCOHERENT
-     * 
-     * @return a String value of the best word guess based on the DLV logic loaded in
+     * @return a String value of the best word guess based on the DLV logic loaded in, or INCOHERENT
      */
     private static String generateWord() {
         // Start the process of generating answer sets based on the rules
@@ -103,8 +124,14 @@ public class MainClass {
         ArrayList<String> word = new ArrayList<String>();
         //int score = -1;
         
+        List<AnswerSet> sets = answerSets.getOptimalAnswerSets();
+        
+        if (sets.size() == 0) {
+            return "INCOHERENT";
+        }
+        
         // Yoink the optimal word from the answer set results
-        for(AnswerSet answerSet : answerSets.getOptimalAnswerSets()) {
+        for(AnswerSet answerSet : sets) {
             // Format: [score(w,s)]
             String set = answerSet.toString();
             word.add(set.substring(set.indexOf("(")+1, set.indexOf(",")));
@@ -127,10 +154,11 @@ public class MainClass {
      * 
      * @param guess the word being guessed
      * @param correct the correct word to compare the guessed word against
+     * @param tries 
      * 
      * @return an int value representing the id of the DLV program containing word clues on the Handler
      */
-    private static int generateClues(String guess, String correct) {
+    private static int generateClues(String guess, String correct, int tries) {
         // First pass
         String clueIndex = passOne(guess, correct);
         
@@ -187,11 +215,8 @@ public class MainClass {
                 char checkLet = guess.charAt(i);
                 
                 int correctCount = countLetter(checkLet, correct);
-                if (fCount.containsKey(checkLet)) {
-                    fCount.put(checkLet, fCount.get(checkLet) + countGreen(checkLet, correct, clueIndex));
-                } else {
-                    fCount.put(checkLet, countGreen(checkLet, correct, clueIndex));
-                }
+                int greenCount = countGreen(checkLet, correct, clueIndex);
+                fCount.put(checkLet, fCount.containsKey(checkLet) ? fCount.get(checkLet) + greenCount : greenCount);
                 for (int j = 0; j < 5; j++) {
                     if (i == j) {
                         continue;
@@ -200,11 +225,7 @@ public class MainClass {
                         char correctLet = correct.charAt(j);
                         if ((checkLet == correctLet) && (fCount.get(correctLet) < correctCount)) {
                             newClues.setCharAt(i, 'y');
-                            if (fCount.containsKey(correctLet)) {
-                                fCount.put(correctLet, fCount.get(correctLet) + 1);
-                            } else {
-                                fCount.put(correctLet, 1);
-                            }
+                            fCount.put(correctLet, fCount.containsKey(correctLet) ? fCount.get(correctLet) + 1 : 1);
                         }
                     }
                 }
@@ -226,9 +247,43 @@ public class MainClass {
      * @return an int value representing the id of the DLV program containing word clues on the Handler
      */
     private static int generateClueFile(String guess, String clueIndex, int tries) {
+        String program = "myTurn(" + (tries+1) + ").\n";
         
+        for (int i = 0; i < 5; i++) {
+            char letter = guess.charAt(i);
+            
+            if (clueIndex.charAt(i) == 'g') {
+                program += "green(" + letter + ", " + (i+1) + ").\n";
+            } else if (clueIndex.charAt(i) == 'y') {
+                program += "yellow(" + letter + ", " + (i+1) + ", " + (tries+1) + ").\n";
+            } else {
+                // The letter is out in that spot, see if it needs to be completely out
+                boolean keepGray = true;
+                for (int j = 0; j < 5; j++) {
+                    if (j == i) {
+                        continue;
+                    }
+                    char compareLet = guess.charAt(j);
+                    if (compareLet == letter && clueIndex.charAt(j) != 'x') {
+                        keepGray = false;
+                        break;
+                    }
+                }
+                if (keepGray) {
+                    program += "gray(" + letter + ").\n";
+                } else {
+                    program += "out(" + letter + ", " + (i+1) + ").\n";
+                }
+            }
+        }
         
-        return -1;
+        // Add program to handler
+        System.out.println(program);
+        
+        InputProgram input = new ASPInputProgram();
+        input.addProgram(program);
+        
+        return handler.addProgram(input);
     }
     
     /**
