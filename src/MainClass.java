@@ -27,6 +27,7 @@ import it.unical.mat.embasp.specializations.dlv2.desktop.DLV2DesktopService;
 public class MainClass {
 
     private static Handler handler;
+    //private static String aspFile = "executable/dlv-2.1.2-linux-x86_64";
     private static String aspFile = "executable/dlv-2.1.2-win64.exe";
     private static String wordFile = "words.txt";
     private static String startingWord = "slate";
@@ -50,7 +51,7 @@ public class MainClass {
         try {
             OptionDescriptor options = new DLVFilterOption("");
             options.clear(); // clearing is required bc the default options are set up wrong
-            options.addOption("--filter=t/2");
+            options.addOption("--filter=t/2,sgCount/1");
             
             handler = new DesktopHandler(new DLV2DesktopService(aspFile));
             handler.addOption(options);
@@ -97,24 +98,24 @@ public class MainClass {
             
                 // Generate the next guess based on the clues created until we get the answer
                 for (int i = 1; i < MAX_TRIES; i++) {
-                    String guess = generateWord();
-                        // Print SGCount after each guess ================================================================================ 
-                    wordProgression += guess + ",";
+                    String[] guess = generateWord();
                 
                     // If we messed up our DLV program somewhere and it evaluates to INCOHERENT, exit gracefully
-                    if (guess.equals("INCOHERENT")) {
+                    if (guess.length == 0) {
                         System.out.println("Incoherent answerset encountered -- check your DLV program(s).");
                         System.exit(4);
                     }
+                    
+                    wordProgression += guess[1] + "," + guess[0] + ",";
                     // If we've guessed the answer, break out of the guess cycle
-                    if (guess.equals(answer)) {
+                    if (guess[0].equals(answer)) {
                         out.write((i+1) + "," + wordProgression + "\n");
                         System.out.println(guess + " - Tries: " + (i+1));
                         break;
                     }
                 
                     // If we haven't guessed our answer yet, generate the next set of clues
-                    tempPrograms.add(generateClues(guess, answer, i));
+                    tempPrograms.add(generateClues(guess[0], answer, i));
                 }
             
                 // Clean up our temporary clues to start clean for the next word
@@ -179,23 +180,23 @@ public class MainClass {
      * 
      * @return a String value of the best word guess based on the DLV logic loaded in, or INCOHERENT
      */
-    private static String generateWord() {
+    private static String[] generateWord() {
         // Start the process of generating answer sets based on the rules
         AnswerSets answerSets = (AnswerSets) handler.startSync();
-        ArrayList<String> word = new ArrayList<String>();
+        //ArrayList<String> word = new ArrayList<String>();
         //int score = -1;
         
         List<AnswerSet> sets = answerSets.getOptimalAnswerSets();
         
-        if (sets.size() == 0) {
-            return "INCOHERENT";
-        }
-        
         // Yoink the optimal word from the answer set results
         for(AnswerSet answerSet : sets) {
+            System.out.println(answerSet);
             // Format: [score(w,s)]
             String set = answerSet.toString();
-            word.add(set.substring(set.indexOf("(")+1, set.indexOf(",")));
+            
+            return new String[]{set.substring(set.indexOf("t(")+2, set.indexOf(",")), 
+                        set.substring(set.indexOf("sgCount(")+8, set.indexOf(")", set.indexOf("sgCount(")+8))};
+            //word.add(set.substring(set.indexOf("(")+1, set.indexOf(",")));
             //score = Integer.parseInt(set.substring(set.indexOf(",")+1, set.indexOf(")")));
         }
         //if (word.size() > 1) {
@@ -203,7 +204,7 @@ public class MainClass {
             //    should be changed later)
         //    return word.get(0);
         //}
-        return word.get(0);
+        return new String[0];
     }
     
     /**
