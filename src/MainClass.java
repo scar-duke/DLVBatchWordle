@@ -27,8 +27,8 @@ import it.unical.mat.embasp.specializations.dlv2.desktop.DLV2DesktopService;
 public class MainClass {
 
     private static Handler handler;
-    //private static String aspFile = "executable/dlv-2.1.2-linux-x86_64";
-    private static String aspFile = "executable/dlv-2.1.2-win64.exe";
+    private static String aspFile = "executable/dlv-2.1.2-linux-x86_64";
+    //private static String aspFile = "executable/dlv-2.1.2-win64.exe";
     private static String wordFile = "words.txt";
     private static String startingWord = "slate";
     private static String mode = "add";
