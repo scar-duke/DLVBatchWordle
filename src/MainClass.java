@@ -27,6 +27,7 @@ public class MainClass {
     private static Handler handler;
     private static String aspFile = "executable/dlv-2.1.2-win64.exe";
     private static String wordFile = "words.txt";
+    private static String exportFile = "add-results.csv";
 
     private static final int MAX_TRIES = 8;
     
@@ -62,7 +63,7 @@ public class MainClass {
             //addDLVProgram("programs/solutions-pattern.dlv");
             //addDLVProgram("programs/solutions-plogp.dlv");
             
-            PrintWriter out = new PrintWriter(new File("add-results.csv"));
+            PrintWriter out = new PrintWriter(new File(exportFile));
             
             for (String word : words) {
                 // Set up an arraylist to hold our clues programs so we can remove them later
@@ -78,6 +79,7 @@ public class MainClass {
                 // Generate the next guess based on the clues created until we get the answer
                 for (int i = 1; i < MAX_TRIES; i++) {
                     String guess = generateWord();
+                        // Print SGCount after each guess ================================================================================ 
                     wordProgression += guess + ",";
                 
                     // If we messed up our DLV program somewhere and it evaluates to INCOHERENT, exit gracefully
