@@ -22,16 +22,30 @@ import it.unical.mat.embasp.platforms.desktop.DesktopHandler;
 import it.unical.mat.embasp.specializations.dlv.DLVFilterOption;
 import it.unical.mat.embasp.specializations.dlv2.desktop.DLV2DesktopService;
 
+// To run from the command line if in root directory:
+//      java -cp "lib/antlr-4.7.2-complete.jar;lib/embASP.jar;." src/MainClass.java
 public class MainClass {
 
     private static Handler handler;
     private static String aspFile = "executable/dlv-2.1.2-win64.exe";
     private static String wordFile = "words.txt";
-    private static String exportFile = "add-results.csv";
+    private static String startingWord = "slate";
+    private static String mode = "add";
+    private static String exportFile = mode + "-results.csv";
 
     private static final int MAX_TRIES = 8;
     
     public static void main(String[] args) {
+        
+        try {
+            wordFile = args[0];
+            mode = args[1];
+            startingWord = args[2];
+            exportFile = mode + "-results.csv";
+        } catch (Exception e) {
+            System.out.println("usage: java -cp \"lib/antlr-4.7.2-complete.jar;lib/embASP.jar;.\" src/MainClass.java readInFileName mode startingWord");
+            System.exit(1);
+        }
 
         try {
             OptionDescriptor options = new DLVFilterOption("");
@@ -50,14 +64,20 @@ public class MainClass {
                 }
             } catch (Exception e) {
                 e.printStackTrace();
-                System.exit(1);
+                System.exit(2);
             }
             
             // Read in DLV files very crudely and quickly for testing purposes
             addDLVProgram("programs/alanbot.dlv");
             addDLVProgram("programs/solutions-edb.dlv");
-            //addDLVProgram("programs/solutions-value-mult.dlv");
-            addDLVProgram("programs/solutions-value-add.dlv");
+            if (mode.equals("add")) {
+                addDLVProgram("programs/solutions-value-add.dlv");
+            } else if (mode.equals("mult")) {
+                addDLVProgram("programs/solutions-value-mult.dlv");
+            } else {
+                System.out.println("Incorrect mode: requires \"mult\" or \"add\"");
+                System.exit(3);
+            }
             //addDLVProgram("programs/used.dlv");
             //addDLVProgram("programs/infosolver.dlv");
             //addDLVProgram("programs/solutions-pattern.dlv");
@@ -69,7 +89,6 @@ public class MainClass {
                 // Set up an arraylist to hold our clues programs so we can remove them later
                 ArrayList<Integer> tempPrograms = new ArrayList<Integer>();
                 String answer = word;
-                String startingWord = "slate";
                 out.print(word + ",");
                 String wordProgression = startingWord + ",";
                 
@@ -85,7 +104,7 @@ public class MainClass {
                     // If we messed up our DLV program somewhere and it evaluates to INCOHERENT, exit gracefully
                     if (guess.equals("INCOHERENT")) {
                         System.out.println("Incoherent answerset encountered -- check your DLV program(s).");
-                        System.exit(2);
+                        System.exit(4);
                     }
                     // If we've guessed the answer, break out of the guess cycle
                     if (guess.equals(answer)) {
