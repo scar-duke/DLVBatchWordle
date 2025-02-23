@@ -6,6 +6,7 @@
  * @author Kaylynn Borror and Alan Ferrenberg
  */
 import java.io.File;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -25,8 +26,7 @@ public class MainClass {
 
     private static Handler handler;
     private static String aspFile = "executable/dlv-2.1.2-win64.exe";
-    private static String idbFileName = "programs/icecream-in-out.dlv";
-    private static String edbFileName = "programs/icecream-edb.dlv";
+    private static String wordFile = "words.txt";
 
     private static final int MAX_TRIES = 8;
     
@@ -35,35 +35,75 @@ public class MainClass {
         try {
             OptionDescriptor options = new DLVFilterOption("");
             options.clear(); // clearing is required bc the default options are set up wrong
-            options.addOption("--filter=score/2");
+            options.addOption("--filter=t/2");
             
             handler = new DesktopHandler(new DLV2DesktopService(aspFile));
             handler.addOption(options);
             
+            // Read in words to guess
+            ArrayList<String> words = new ArrayList<String>();
+            try {
+                Scanner file = new Scanner(new File(wordFile));
+                while (file.hasNext()) {
+                    words.add(file.next());
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                System.exit(1);
+            }
+            
             // Read in DLV files very crudely and quickly for testing purposes
             addDLVProgram("programs/alanbot.dlv");
-            addDLVProgram("programs/frequencySolutions-edb.dlv");
             addDLVProgram("programs/solutions-edb.dlv");
-            addDLVProgram("programs/used.dlv");
+            //addDLVProgram("programs/solutions-value-mult.dlv");
+            addDLVProgram("programs/solutions-value-add.dlv");
+            //addDLVProgram("programs/used.dlv");
+            //addDLVProgram("programs/infosolver.dlv");
+            //addDLVProgram("programs/solutions-pattern.dlv");
+            //addDLVProgram("programs/solutions-plogp.dlv");
             
-            String answer = "cream";
+            PrintWriter out = new PrintWriter(new File("add-results.csv"));
             
-            for (int i = 0; i < MAX_TRIES; i++) {
-                String guess = generateWord();
-
-                System.out.println(guess);
+            for (String word : words) {
+                // Set up an arraylist to hold our clues programs so we can remove them later
+                ArrayList<Integer> tempPrograms = new ArrayList<Integer>();
+                String answer = word;
+                String startingWord = "slate";
+                out.print(word + ",");
+                String wordProgression = startingWord + ",";
                 
-                if (guess.equals("INCOHERENT")) {
-                    System.out.println("Incoherent answerset encountered -- check your DLV program(s).");
-                    break;
-                }
-                if (guess.equals(answer)) {
-                    System.out.println("Tries: " + (i+1));
-                    break;
-                }
+                // Generate our first set of clues
+                tempPrograms.add(generateClues(startingWord, answer, 0));
+            
+                // Generate the next guess based on the clues created until we get the answer
+                for (int i = 1; i < MAX_TRIES; i++) {
+                    String guess = generateWord();
+                    wordProgression += guess + ",";
                 
-                int clueFileId = generateClues(guess, answer, i);
+                    // If we messed up our DLV program somewhere and it evaluates to INCOHERENT, exit gracefully
+                    if (guess.equals("INCOHERENT")) {
+                        System.out.println("Incoherent answerset encountered -- check your DLV program(s).");
+                        System.exit(2);
+                    }
+                    // If we've guessed the answer, break out of the guess cycle
+                    if (guess.equals(answer)) {
+                        out.write((i+1) + "," + wordProgression + "\n");
+                        System.out.println(guess + " - Tries: " + (i+1));
+                        break;
+                    }
+                
+                    // If we haven't guessed our answer yet, generate the next set of clues
+                    tempPrograms.add(generateClues(guess, answer, i));
+                }
+            
+                // Clean up our temporary clues to start clean for the next word
+                for (int id : tempPrograms) {
+                    handler.removeProgram(id);
+                }
             }
+            
+            // close our file after we've processed all words
+            out.close();
             
         } catch (Exception e) {
             e.printStackTrace();
@@ -257,7 +297,7 @@ public class MainClass {
             } else if (clueIndex.charAt(i) == 'y') {
                 program += "yellow(" + letter + ", " + (i+1) + ", " + (tries+1) + ").\n";
             } else {
-                // The letter is out in that spot, see if it needs to be completely out
+                // The letter is gray in that spot, see if it needs to be completely out
                 boolean keepGray = true;
                 for (int j = 0; j < 5; j++) {
                     if (j == i) {
@@ -278,7 +318,7 @@ public class MainClass {
         }
         
         // Add program to handler
-        System.out.println(program);
+        //System.out.println(program);
         
         InputProgram input = new ASPInputProgram();
         input.addProgram(program);
