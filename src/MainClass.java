@@ -27,8 +27,8 @@ import it.unical.mat.embasp.specializations.dlv2.desktop.DLV2DesktopService;
 public class MainClass {
 
     private static Handler handler;
-    //private static String aspFile = "executable/dlv-2.1.2-linux-x86_64";
-    private static String aspFile = "executable/dlv-2.1.2-win64.exe";
+    private static String aspFile = "executable/dlv-2.1.2-linux-x86_64";
+    //private static String aspFile = "executable/dlv-2.1.2-win64.exe";
     private static String wordFile = "words.txt";
     private static String startingWord = "slate";
     private static String mode = "add";
@@ -101,38 +101,43 @@ public class MainClass {
                 
                 // Generate our first set of clues
                 tempPrograms.add(generateClues(startingWord, answer, 0));
-            
-                // Generate the next guess based on the clues created until we get the answer
-                for (int i = 1; i < MAX_TRIES; i++) {
-                    String[] guess = generateWord();
                 
-                    // If we messed up our DLV program somewhere and it evaluates to INCOHERENT, exit gracefully
-                    if (guess.length == 0) {
-                        System.out.println("Incoherent answerset encountered -- check your DLV program(s).");
-                        System.exit(4);
+                // If we got super lucky and our starting word is the answer, print as such and move to the next word
+                if (startingWord.equals(answer)) {
+                    out.write(1 + "," + wordProgression + "\n");
+                    System.out.println(startingWord + " - Tries: " + 1);
+                    // Clean up our temporary clues to start clean for the next word
+                    for (int id : tempPrograms) {
+                        handler.removeProgram(id);
                     }
+                } else {
+            
+                    // Generate the next guess based on the clues created until we get the answer
+                    for (int i = 1; i < MAX_TRIES; i++) {
+                        String[] guess = generateWord();
                     
-                    wordProgression += guess[1] + "," + guess[0] + ",";
-                    // If we've guessed the answer, break out of the guess cycle
-                    if (guess[0].equals(answer)) {
-                        // if we got it on our first guess (which happens when i is 1
-                        if (i == 1) {
-                            out.write((i) + "," + wordProgression + "\n");
-                            System.out.println(guess[0] + " - Tries: " + (i));
+                        // If we messed up our DLV program somewhere and it evaluates to INCOHERENT, exit gracefully
+                        if (guess.length == 0) {
+                            System.out.println("Incoherent answerset encountered -- check your DLV program(s).");
+                            System.exit(4);
+                        }
+                        
+                        wordProgression += guess[1] + "," + guess[0] + ",";
+                        // If we've guessed the answer, break out of the guess cycle
+                        if (guess[0].equals(answer)) {
+                            out.write((i+1) + "," + wordProgression + "\n");
+                            System.out.println(guess[0] + " - Tries: " + (i+1));
                             break;
                         }
-                        out.write((i+1) + "," + wordProgression + "\n");
-                        System.out.println(guess[0] + " - Tries: " + (i+1));
-                        break;
+                    
+                        // If we haven't guessed our answer yet, generate the next set of clues
+                        tempPrograms.add(generateClues(guess[0], answer, i));
                     }
                 
-                    // If we haven't guessed our answer yet, generate the next set of clues
-                    tempPrograms.add(generateClues(guess[0], answer, i));
-                }
-            
-                // Clean up our temporary clues to start clean for the next word
-                for (int id : tempPrograms) {
-                    handler.removeProgram(id);
+                    // Clean up our temporary clues to start clean for the next word
+                    for (int id : tempPrograms) {
+                        handler.removeProgram(id);
+                    }
                 }
             }
             
