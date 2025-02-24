@@ -27,8 +27,8 @@ import it.unical.mat.embasp.specializations.dlv2.desktop.DLV2DesktopService;
 public class MainClass {
 
     private static Handler handler;
-    private static String aspFile = "executable/dlv-2.1.2-linux-x86_64";
-    //private static String aspFile = "executable/dlv-2.1.2-win64.exe";
+    //private static String aspFile = "executable/dlv-2.1.2-linux-x86_64";
+    private static String aspFile = "executable/dlv-2.1.2-win64.exe";
     private static String wordFile = "words.txt";
     private static String startingWord = "slate";
     private static String mode = "add";
@@ -51,7 +51,7 @@ public class MainClass {
         try {
             OptionDescriptor options = new DLVFilterOption("");
             options.clear(); // clearing is required bc the default options are set up wrong
-            options.addOption("--filter=t/2,sgCount/1");
+            options.addOption("--filter=winner/2,sgCount/1");
             
             handler = new DesktopHandler(new DLV2DesktopService(aspFile));
             handler.addOption(options);
@@ -68,15 +68,21 @@ public class MainClass {
                 System.exit(2);
             }
             
-            // Read in DLV files very crudely and quickly for testing purposes
-            addDLVProgram("programs/alanbot.dlv");
+            // Read in DLV files based on mode asked for
             addDLVProgram("programs/solutions-edb.dlv");
             if (mode.equals("add")) {
                 addDLVProgram("programs/solutions-value-add.dlv");
+                addDLVProgram("programs/alanbot.dlv");
             } else if (mode.equals("mult")) {
                 addDLVProgram("programs/solutions-value-mult.dlv");
+                addDLVProgram("programs/alanbot.dlv");
+            } else if (mode.equals("info")) {
+                addDLVProgram("programs/solutions-value-mult.dlv");
+                addDLVProgram("programs/solutions-pattern.dlv");
+                addDLVProgram("programs/solutions-plogp.dlv");
+                addDLVProgram("programs/infosolver.dlv");
             } else {
-                System.out.println("Incorrect mode: requires \"mult\" or \"add\"");
+                System.out.println("Incorrect mode: requires \"mult\", \"add\", or \"info\".");
                 System.exit(3);
             }
             //addDLVProgram("programs/used.dlv");
@@ -109,8 +115,14 @@ public class MainClass {
                     wordProgression += guess[1] + "," + guess[0] + ",";
                     // If we've guessed the answer, break out of the guess cycle
                     if (guess[0].equals(answer)) {
+                        // if we got it on our first guess (which happens when i is 1
+                        if (i == 1) {
+                            out.write((i) + "," + wordProgression + "\n");
+                            System.out.println(guess[0] + " - Tries: " + (i));
+                            break;
+                        }
                         out.write((i+1) + "," + wordProgression + "\n");
-                        System.out.println(guess + " - Tries: " + (i+1));
+                        System.out.println(guess[0] + " - Tries: " + (i+1));
                         break;
                     }
                 
@@ -147,7 +159,7 @@ public class MainClass {
      */
     private static int addDLVProgram(String programFileName) {
         InputProgram input = new ASPInputProgram();
-        String program = "";
+        StringBuilder program = new StringBuilder();
 
         try {
             Scanner file = new Scanner(new File(programFileName));
@@ -155,7 +167,7 @@ public class MainClass {
             while (file.hasNextLine()) {
                 String line = file.nextLine();
                 if (!line.contains("%") && !line.contains("#show")) {
-                    program += line;
+                    program.append(line);
                 }
             }
 
@@ -165,7 +177,7 @@ public class MainClass {
         }
 
         // take the file outputs and add it to the input program
-        input.addProgram(program);
+        input.addProgram(program.toString());
 
         // add the input program to the handler
         return handler.addProgram(input);
@@ -190,11 +202,9 @@ public class MainClass {
         
         // Yoink the optimal word from the answer set results
         for(AnswerSet answerSet : sets) {
-            System.out.println(answerSet);
-            // Format: [score(w,s)]
             String set = answerSet.toString();
             
-            return new String[]{set.substring(set.indexOf("t(")+2, set.indexOf(",")), 
+            return new String[]{set.substring(set.indexOf("winner(")+7, set.indexOf(",", set.indexOf("winner(")+7)), 
                         set.substring(set.indexOf("sgCount(")+8, set.indexOf(")", set.indexOf("sgCount(")+8))};
             //word.add(set.substring(set.indexOf("(")+1, set.indexOf(",")));
             //score = Integer.parseInt(set.substring(set.indexOf(",")+1, set.indexOf(")")));
