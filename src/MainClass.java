@@ -27,8 +27,8 @@ import it.unical.mat.embasp.specializations.dlv2.desktop.DLV2DesktopService;
 public class MainClass {
 
     private static Handler handler;
-    //private static String aspFile = "executable/dlv-2.1.2-linux-x86_64";
-    private static String aspFile = "executable/dlv-2.1.2-win64.exe";
+    private static String aspFile = "executable/dlv-2.1.2-linux-x86_64";
+    //private static String aspFile = "executable/dlv-2.1.2-win64.exe";
     private static String wordFile = "words.txt";
     private static String startingWord = "slate";
     private static String mode = "add";
@@ -106,7 +106,6 @@ public class MainClass {
                     // Generate the next guess based on the clues created until we get the answer
                     for (int i = 1; i < MAX_TRIES; i++) {
                         String[] guess = generateWord();
-                        System.out.println(guess[0]);
                     
                         // If we messed up our DLV program somewhere and it evaluates to INCOHERENT, exit gracefully
                         if (guess.length == 0) {
@@ -198,9 +197,8 @@ public class MainClass {
         List<AnswerSet> sets = answerSets.getOptimalAnswerSets();
         
         // Yoink the optimal word from the answer set results
-        for(AnswerSet answerSet : sets) {
+        for (AnswerSet answerSet : sets) {
             String set = answerSet.toString();
-            System.out.println(set);
             
             return new String[]{set.substring(set.indexOf("winner(")+7, set.indexOf(",", set.indexOf("winner(")+7)), 
                         set.substring(set.indexOf("sgCount(")+8, set.indexOf(")", set.indexOf("sgCount(")+8))};
@@ -291,9 +289,7 @@ public class MainClass {
 
                     if (clueIndex.charAt(j) != 'g') {
                         char correctLet = correct.charAt(j);
-                        //System.out.println(correctLet + " correct count " + correctCount);
                         if ((checkLet == correctLet) && (fCount.get(correctLet) < correctCount) && newClues.charAt(i) != 'y') {
-                            //System.out.println("Set " + checkLet + " to y" + " at location " + i);
                             newClues.setCharAt(i, 'y');
                             fCount.put(correctLet, fCount.containsKey(correctLet) ? fCount.get(correctLet) + 1 : 1);
                         }
@@ -301,7 +297,6 @@ public class MainClass {
                 }
             }
         }
-        System.out.println(newClues.toString());
         return newClues.toString();
     }
     
@@ -348,7 +343,7 @@ public class MainClass {
         }
         
         // Add program to handler
-        System.out.println(program);
+        //System.out.println(program);
         
         InputProgram input = new ASPInputProgram();
         input.addProgram(program);
